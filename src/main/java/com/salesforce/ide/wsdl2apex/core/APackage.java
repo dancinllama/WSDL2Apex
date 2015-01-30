@@ -34,13 +34,41 @@ public class APackage extends ABase {
     }
 
     public void load(Schema schema) throws CalloutException, ConnectionException {
+
+        HashMap<String,AClass> superClasses = new HashMap<String,AClass>();
         for (ComplexType ct : schema.getComplexTypes()) {
-            AClass aclass = new ComplexTypeClass(ct, definitions, typeMapper);
-            addClass(aclass);
+            if(!ct.hasBaseClass() || ct.getBase() == null){
+                AClass aClass = new ComplexTypeClass(ct, definitions, typeMapper);
+                superClasses.put(aClass.getName(),aClass);
+                addClass(aClass);
+            }
+        }
+
+        for (ComplexType ct : schema.getComplexTypes()) {
+            if(ct.hasBaseClass()){
+                if(ct.getBase() != null){
+                    String namespace = ct.getBase().getNamespaceURI();
+                    String namespaceWithBrackets = "{"+namespace+"}";
+                    String baseString = ct.getBase().toString();
+                    String baseStringMinusPrefix = baseString.replace(namespaceWithBrackets,"");
+                    String superClassName = typeMapper.getSafeName(baseStringMinusPrefix);
+                    AClass superClass = superClasses.get(superClassName);
+
+                    AClass aclass = null;
+                    boolean superClassIsNull = (superClass == null);
+                    if(superClass != null){
+                        superClass.setIsVirtual(true);
+                        aclass = new ComplexTypeClass(ct, definitions, typeMapper, (ComplexTypeClass)superClass);
+                    }else{
+                        aclass = new ComplexTypeClass(ct, definitions, typeMapper, null);
+                    }
+                    addClass(aclass);
+                }
+            }
         }
     }
 
-    void addClass(AClass ac) throws CalloutException {
+    protected void addClass(AClass ac) throws CalloutException {
         if (classes.containsKey(ac.getName())) {
             throw new CalloutException("Class name '" + ac.getName() + "' already in use. "
                     + "Please edit WSDL to remove repeated names");

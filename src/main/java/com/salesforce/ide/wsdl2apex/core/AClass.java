@@ -8,6 +8,8 @@
 package com.salesforce.ide.wsdl2apex.core;
 
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 
 import com.sforce.ws.wsdl.Definitions;
 
@@ -19,41 +21,106 @@ import com.sforce.ws.wsdl.Definitions;
  */
 abstract class AClass extends ABase {
 
-    protected final String name;
     protected final String extendsClass;
-    protected final ArrayList<AField> fields = new ArrayList<AField>();
+    protected final String name;
     protected final ArrayList<AMethod> methods = new ArrayList<AMethod>();
+    protected final AClass superClass;
+    protected boolean isVirtual;
+    public ArrayList<AField> fields = new ArrayList<AField>();
+    public ArrayList<AField> subclassFields = new ArrayList<AField>();
 
-    protected AClass(Definitions definitions, ApexTypeMapper typeMapper, String name, String extendsClass) {
+    protected AClass(com.sforce.ws.wsdl.Definitions definitions, ApexTypeMapper typeMapper, String name, AClass superClass){
+        this(definitions,typeMapper,name,superClass,null);
+    }
+
+    protected AClass(Definitions definitions, ApexTypeMapper typeMapper, String name,AClass superClass,String extendsClass) {
         super(definitions, typeMapper);
         this.name = name;
+        this.superClass = superClass;
         this.extendsClass = extendsClass;
     }
 
-    String getName() {
+    public String getName() {
         return name;
+    }
+
+    public void setIsVirtual(boolean isVirtual){
+        this.isVirtual = isVirtual;
+    }
+
+    public ArrayList<AField> getFields(){
+        return this.fields;
+    }
+
+    /**
+     * Adds a field to this class if one does not already exist with the same name and access.
+     * @param fields [description]
+     */
+    public void addSubclassFields(ArrayList<AField> fields){
+        this.subclassFields.addAll(fields);
     }
 
     void write(AWriter writer) throws CalloutException {
         writer.startBlock();
-        if (extendsClass == null)
-            writer.writeLine("public class ", name, " {");
-        else
-            writer.writeLine("public class ", name, " extends ", extendsClass, " {");
 
-        for (AField field : fields) {
-            if (field.isPublic()) {
-                field.write(writer);
+        String extendsClass = null;
+        if(this.superClass != null){
+            extendsClass = superClass.getName();
+        }else{
+            extendsClass = this.extendsClass;
+        }
+
+        writer.writeLine(
+            "public"
+            ,isVirtual ? " virtual class " : " class "
+            ,name
+            ,extendsClass == null ? " {" : " extends "
+            ,extendsClass == null ? "" : extendsClass
+            ,extendsClass == null ? "" : " {"
+        );
+
+        Set<String> fieldsOutputted = new HashSet<String>();
+
+        for (AField field : this.fields) {
+            if(!fieldsOutputted.contains(field.getName())){
+                if (field.isPublic()) {
+                    field.write(writer);
+                    fieldsOutputted.add(field.getName());
+                }
             }
         }
-        for (AField field : fields) {
-            if (!field.isPublic()) {
-                field.write(writer);
+
+        for(AField field : this.subclassFields){
+            if(!fieldsOutputted.contains(field.getName())){
+                if (field.isPublic()) {
+                    field.write(writer);
+                    fieldsOutputted.add(field.getName());
+                }
             }
         }
+
+        for (AField field : this.fields) {
+            if(!fieldsOutputted.contains(field.getName())){
+                if (!field.isPublic()) {
+                    field.write(writer);
+                    fieldsOutputted.add(field.getName());
+                }
+            }
+        }
+
+        for(AField field : this.subclassFields){
+            if(!fieldsOutputted.contains(field.getName())){
+                if (!field.isPublic()) {
+                    field.write(writer);
+                    fieldsOutputted.add(field.getName());
+                }
+            }
+        }
+
         for (AMethod method : methods) {
             method.write(writer);
         }
+
         writer.writeLine("}");
         writer.endBlock();
     }

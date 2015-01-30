@@ -20,7 +20,12 @@ class ComplexTypeClass extends AClass {
 
     ComplexTypeClass(ComplexType ct, Definitions definitions, ApexTypeMapper typeMapper) throws CalloutException,
             ConnectionException {
-        super(definitions, typeMapper, typeMapper.getSafeName(ct.getName()), null);
+        this(ct,definitions, typeMapper, null);
+    }
+
+    ComplexTypeClass(ComplexType ct, Definitions definitions, ApexTypeMapper typeMapper, ComplexTypeClass superClass) throws CalloutException,
+            ConnectionException {
+        super(definitions, typeMapper, typeMapper.getSafeName(ct.getName()), superClass);
 
         ArrayList<String> fieldOrder = new ArrayList<String>();
         Collection sequence = ct.getContent();
@@ -38,6 +43,11 @@ class ComplexTypeClass extends AClass {
                 fields.add(new AField("private", "String[]", name + CalloutConstants.TYPE_INFO_PREFIX,
                         typeInfo(element)));
             }
+        }
+
+        if(superClass != null){
+            superClass.addSubclassFields(fields);
+            fields.addAll(superClass.getFields());
         }
 
         Iterator<Attribute> attributesIt = ct.getAttributes();
