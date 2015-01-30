@@ -32,7 +32,7 @@ class CalloutFutureClass extends AClass {
      */
     CalloutFutureClass(Definitions definitions, ApexTypeMapper typeMapper, Operation operaton, String futureName,
             ApexTypeName responseType, ApexTypeName underlyingTypeName, String returnElementName) {
-        super(definitions, typeMapper, futureName, "System.WebServiceCalloutFuture");
+        super(definitions, typeMapper, futureName, null, "System.WebServiceCalloutFuture");
         methods.add(new ResultGetter(definitions, typeMapper, responseType, underlyingTypeName, returnElementName));
     }
 
