@@ -48,16 +48,28 @@ abstract class AClass extends ABase {
         this.isVirtual = isVirtual;
     }
 
-    public ArrayList<AField> getFields(){
-        return this.fields;
-    }
-
     /**
      * Adds a field to this class if one does not already exist with the same name and access.
      * @param fields [description]
      */
     public void addSubclassFields(ArrayList<AField> fields){
         this.subclassFields.addAll(fields);
+    }
+
+    public void addField(AField field){
+        this.fields.add(field);
+    }
+
+    public void addFields(ArrayList<AField> fields){
+        this.fields.addAll(fields);
+    }
+
+    public ArrayList<AField> getFields(){
+        return this.fields;
+    }
+
+    public ArrayList<AField> getSubclassFields(){
+        return this.subclassFields;
     }
 
     void write(AWriter writer) throws CalloutException {
@@ -82,39 +94,49 @@ abstract class AClass extends ABase {
         Set<String> fieldsOutputted = new HashSet<String>();
 
         for (AField field : this.fields) {
-            if(!fieldsOutputted.contains(field.getName())){
+            if(!fieldsOutputted.contains(field.getName().toLowerCase())){
                 if (field.isPublic()) {
                     field.write(writer);
-                    fieldsOutputted.add(field.getName());
+                    fieldsOutputted.add(field.getName().toLowerCase());
                 }
             }
         }
 
         for(AField field : this.subclassFields){
-            if(!fieldsOutputted.contains(field.getName())){
+            if(!fieldsOutputted.contains(field.getName().toLowerCase())){
                 if (field.isPublic()) {
                     field.write(writer);
-                    fieldsOutputted.add(field.getName());
+                    fieldsOutputted.add(field.getName().toLowerCase());
                 }
             }
         }
 
+        AField fieldOrderInfo = null;
         for (AField field : this.fields) {
-            if(!fieldsOutputted.contains(field.getName())){
-                if (!field.isPublic()) {
-                    field.write(writer);
-                    fieldsOutputted.add(field.getName());
+            if(!fieldsOutputted.contains(field.getName().toLowerCase())){
+                if(!field.isPublic()){
+                    if(!field.getName().equalsIgnoreCase(CalloutConstants.FIELD_ORDER_INFO)){
+                        field.write(writer);
+                        fieldsOutputted.add(field.getName().toLowerCase());
+                    }else{
+                        fieldOrderInfo = field;
+                    }
                 }
             }
         }
 
         for(AField field : this.subclassFields){
-            if(!fieldsOutputted.contains(field.getName())){
+            if(!fieldsOutputted.contains(field.getName().toLowerCase())){
                 if (!field.isPublic()) {
                     field.write(writer);
-                    fieldsOutputted.add(field.getName());
+                    fieldsOutputted.add(field.getName().toLowerCase());
                 }
             }
+        }
+
+        //FIELD_ORDER_INFO
+        if(fieldOrderInfo != null){
+            fieldOrderInfo.write(writer);
         }
 
         for (AMethod method : methods) {

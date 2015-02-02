@@ -9,6 +9,8 @@ package com.salesforce.ide.wsdl2apex.core;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.sforce.ws.ConnectionException;
 import com.sforce.ws.wsdl.*;
@@ -39,15 +41,9 @@ class ComplexTypeClass extends AClass {
                 String name = typeMapper.getSafeName(element.getName());
                 String apexType = typeMapper.getApexType(element, definitions).getAsApex();
                 fields.add(new AField("public", apexType, name, null)); //access, type, name, value
-                fieldOrder.add(name);
                 fields.add(new AField("private", "String[]", name + CalloutConstants.TYPE_INFO_PREFIX,
                         typeInfo(element)));
             }
-        }
-
-        if(superClass != null){
-            superClass.addSubclassFields(fields);
-            fields.addAll(superClass.getFields());
         }
 
         Iterator<Attribute> attributesIt = ct.getAttributes();
@@ -67,8 +63,39 @@ class ComplexTypeClass extends AClass {
                     attributeInfo(attribute)));
         }
 
+        if(superClass != null){
+            superClass.addSubclassFields(fields);
+            fields.addAll(superClass.getFields());
+        }
+
         addComplexTypeInfo(ct);
-        addFieldOrderInfo(fieldOrder);
+
+
+        fieldOrder = new ArrayList<String>();
+        for(AField field : fields){
+            if(field.isPublic()){
+                fieldOrder.add(field.getName());
+            }
+        }
+        addFieldOrderInfo(fieldOrder,this);
+
+        if(superClass != null){
+            System.out.println("JWL super class is not null!");
+            System.out.println("JWL super class name: " + superClass.getName());
+            fieldOrder = new ArrayList<String>();
+            for(AField field : superClass.getFields()){
+                if(field.isPublic()){
+                    fieldOrder.add(field.getName());
+                }
+            }
+            for(AField field : superClass.getSubclassFields()){
+                if(field.isPublic()){
+                    fieldOrder.add(field.getName());
+                }
+            }
+            System.out.println("JWL: fieldOrder size: " + fieldOrder.size());
+            addFieldOrderInfo(fieldOrder,superClass);
+        }
     }
 
     private String attributeInfo(Attribute attribute) {
@@ -96,18 +123,31 @@ class ComplexTypeClass extends AClass {
         return sb.toString();
     }
 
-    private void addFieldOrderInfo(ArrayList<String> fieldOrder) {
+    private void addFieldOrderInfo(ArrayList<String> fieldOrder,AClass aClassInstance) {
+
+        Set<String> fieldsToIgnore = new HashSet<String>();
+        fieldsToIgnore.add(CalloutConstants.FIELD_ORDER_INFO);
         StringBuilder sb = new StringBuilder();
         sb.append("new String[]{");
-
         for (int i = 0; i < fieldOrder.size(); i++) {
-            sb.append("'").append(fieldOrder.get(i)).append("'");
-            if (i < fieldOrder.size() - 1) {
+            if(!fieldsToIgnore.contains(fieldOrder.get(i).toLowerCase())){
+                sb.append("'").append(fieldOrder.get(i)).append("'");
                 sb.append(",");
+                fieldsToIgnore.add(fieldOrder.get(i).toLowerCase());
             }
         }
         sb.append("}");
-        fields.add(new AField("private", "String[]", CalloutConstants.FIELD_ORDER_INFO, sb.toString()));
+
+        System.out.println("JWL: filedOrderInfo for " + aClassInstance.getName() + " : " + sb.toString());
+
+        aClassInstance.addField(
+            new AField(
+                "private"
+                , "String[]"
+                , CalloutConstants.FIELD_ORDER_INFO
+                , sb.toString().replace(",}","}")
+            )
+        );
     }
 
     private void addComplexTypeInfo(ComplexType ct) {

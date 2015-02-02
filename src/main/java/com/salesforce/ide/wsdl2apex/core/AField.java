@@ -21,7 +21,7 @@ class AField {
     private final String type;
     private final String name;
     private final String access;
-    private final String value;
+    private String value;
 
     AField(String access, String type, String name, String value) {
         this.access = access;
@@ -32,6 +32,18 @@ class AField {
 
     boolean isPublic() {
         return "public".equals(access);
+    }
+
+    String getName(){
+        return this.name;
+    }
+
+    String getValue(){
+        return this.value;
+    }
+
+    void setValue(String value){
+        this.value = value;
     }
 
     void write(AWriter writer) throws CalloutException {
