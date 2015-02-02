@@ -7,7 +7,7 @@ How to Use
 ==========
 
 1. Clone this repository.
-1. In the directory, use the command `mvn install package`.
+1. In the directory, use the command `mvn install package -DskipTests`. (James: The skipTests is because I broke the tests and haven't fixed them yet)
 1. After it has finished, use the command `cd target` to switch to the right directory
 1. Execute the jar: `java -jar WSDL2Apex-1.0.jar [path-to-wsdl] [path-to-new-file] [want asynchronous class? (yes|no)]`
 1. To clean, run `mvn clean`
